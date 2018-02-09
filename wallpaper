@@ -1,0 +1,63 @@
+#!/bin/bash
+# Copyright (C) 2018 Zoran Loncarevic
+
+usage() {
+	cat >&2 << EOF_USAGE
+usage: wallpaper command ...
+
+Commands:
+  set         -- set new wallpaper
+  dim         -- dim...
+  blur        -- blur...
+  tint        -- tint current wallpaper
+  next        -- change to next wallpaper
+  prev        -- change to preious wallpaper
+  browse      -- browse wallpapers
+  getfilename -- print current wallpaper filename
+EOF_USAGE
+}
+
+get_current_wallpaper_filename()
+{
+	echo "/path/to/current/wallpaper"
+}
+
+set_command()
+{
+	echo "Replace this with implementation of set command"
+}
+
+if [[ $1 = -x ]]; then
+	shift
+	set -x
+fi
+
+case "$1" in
+
+	set)
+		shift
+		set_command "$@"
+		;;
+	dim)	;&
+	blur)	;&
+	tint)
+		set_command $(get_current_wallpaper_filename) "$@"
+		;;
+
+	getfilename)
+		echo $(get_current_wallpaper_filename)
+		;;
+	browse)
+		echo "Browse wallpapers."
+		;;
+	next)
+		echo "Next wallpaper."
+		;;
+	prev)
+		echo "Previous wallpaper."
+		;;
+	*)
+		echo "Invalid command." >&2
+		usage
+		;;
+esac
