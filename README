@@ -1,0 +1,38 @@
+This is supposed to be a script for doing everything related
+to desktop wallpaper. It is inspired by
+
+https://www.reddit.com/r/
+unixporn/comments/7iddwn/i3lock_faster_and_better_lockscreen/.
+
+Command line syntax is
+
+     wallpaper command [ commad arguments and options... ]
+
+Commands encompass setting wallpaper (set), getting filename
+of current wallpaper (getfilename), cycling thru wallpapers
+in single directory, browsing thru wallpapers and applying
+filters like blur, dimming, tinting, etc... (see below).
+Vague future plans include automatic downloading of
+wallpapers from specialized sites, extensive logging,
+undo of all operations.
+
+RIGHT NOW, I concentrate on set command with syntax
+
+     wallpaper set (filename|DEFAULT|CLIP)
+                   [ (dim|blur|tint) [opt_arg] ...]
+
+Special targets DEFAULT and CLIP are replaced with the built
+in default wallpaper filename and content of clipboard,
+respectively. Sets wallpaper to an image contained in
+filename applying to it beforehand image filters specified
+in optional
+
+     image_recipe := ( filter_op [op_operand] ... )
+
+If set command and filename is ommited, leaving only image
+recipe, filters are applied to the current wallpaper image,
+expanding command line effectively to
+
+     wallpaper set $(wallpaper getfilename) image_recipe
+
+
