@@ -1,6 +1,8 @@
 #!/bin/bash
 # Copyright (C) 2018 Zoran Loncarevic
 
+arg0=${0##*/}
+
 usage() {
 	cat >&2 << EOF_USAGE
 usage: wallpaper command ...
@@ -15,6 +17,11 @@ Commands:
   browse      -- browse wallpapers
   getfilename -- print current wallpaper filename
 EOF_USAGE
+}
+
+report_error() {
+	echo "$arg0: $2" >&2
+	exit $1
 }
 
 get_current_wallpaper_filename()
