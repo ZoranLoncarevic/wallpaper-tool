@@ -2,6 +2,7 @@
 # Copyright (C) 2018 Zoran Loncarevic
 
 arg0=${0##*/}
+DEFAULT_WALLPAPER="${DEFAULT_WALLPAPER:-/usr/share/backgrounds/Green_by_Alan_Mattila.jpg}"
 
 usage() {
 	cat >&2 << EOF_USAGE
@@ -29,9 +30,29 @@ get_current_wallpaper_filename()
 	echo "/path/to/current/wallpaper"
 }
 
+get_proposed_file() {
+	local proposed_file=$1
+
+	if [[ "${proposed_file^^}" == "CLIP" ]]; then
+		proposed_file=$(xclip -o)
+	fi
+	if [[ "$proposed_file" == "default" ]]; then
+		proposed_file="$DEFAULT_WALLPAPER"
+	fi
+
+	if [[ -e "$proposed_file" ]]; then
+		echo $(realpath -s "$proposed_file")
+	else
+		report_error 1 "Image $proposed_file does not exists."
+	fi
+}
+
 set_command()
 {
-	echo "Replace this with implementation of set command"
+	local wallpaper_file 
+
+	wallpaper_file=$(get_proposed_file "$1") || exit $?
+	echo "This should set wallpaper to $wallpaper_file"
 }
 
 if [[ $1 = -x ]]; then
