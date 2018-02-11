@@ -4,6 +4,8 @@
 arg0=${0##*/}
 DEFAULT_WALLPAPER="${DEFAULT_WALLPAPER:-/usr/share/backgrounds/Green_by_Alan_Mattila.jpg}"
 
+declare -a the_recipe=()
+
 usage() {
 	cat >&2 << EOF_USAGE
 usage: wallpaper command ...
@@ -30,6 +32,35 @@ get_current_wallpaper_filename()
 	echo "/path/to/current/wallpaper"
 }
 
+extract_num() {
+	if [[ $1 =~ ^[0-9]+$ ]]; then
+		echo ":$1"
+		return 0
+	else
+		echo ""
+		return 1
+	fi
+}
+
+get_recipe() {
+	while [[ $# -gt 0 ]]; do
+		filter=$1
+		case $filter in
+
+			dim)	;&
+			blur)	;&
+			tint)
+				argument=$(extract_num $2) && shift
+				the_recipe+=("$filter$argument")
+				shift
+				;;
+			*)
+				report_error 2 "Invalid operation $filter"
+				;;
+		esac
+	done
+}
+
 get_proposed_file() {
 	local proposed_file=$1
 
@@ -52,6 +83,9 @@ set_command()
 	local wallpaper_file 
 
 	wallpaper_file=$(get_proposed_file "$1") || exit $?
+	shift
+	get_recipe "$@"
+	echo "Parsed filter: ${the_recipe[@]}"
 	echo "This should set wallpaper to $wallpaper_file"
 }
 
