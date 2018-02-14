@@ -35,4 +35,10 @@ expanding command line effectively to
 
      wallpaper set $(wallpaper getfilename) image_recipe
 
+Image filters are applied one by one, in the order specified
+on the command line, with final modified image and all
+intermediate results being stored in subdirectory .wall-cache
+created in the same directory as the original image.
+(I don't think this is the ideal place for cache; see
+Q1 below for futher discussion.) 
 
