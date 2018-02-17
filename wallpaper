@@ -73,9 +73,13 @@ recipe_to_cachename() {
 	if [[ $1 == 0 ]]; then
 		filename=$2
 	else
-		filename=${2%/*}/.wall-cache/${2##*/}
-		filename+=__${the_recipe[0]}
+		if [[ "$2" =~ /.wall-cache/[^/]*$ ]]; then
+			filename=$2+
+		else
+			filename=${2%/*}/.wall-cache/${2##*/}__
+		fi
 
+		filename+=${the_recipe[0]}
 		for filter in "${the_recipe[@]:1:$(($1-1))}"; do
 			filename+="+$filter"
 		done
