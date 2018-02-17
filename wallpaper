@@ -29,7 +29,12 @@ report_error() {
 
 get_current_wallpaper_filename()
 {
-	echo "/path/to/current/wallpaper"
+	echo $(gconftool --get /desktop/gnome/background/picture_filename)
+}
+
+set_current_wallpaper()
+{
+	gconftool -t str --set /desktop/gnome/background/picture_filename "$1"
 }
 
 extract_arg() {
@@ -169,7 +174,7 @@ set_command()
 		wallpaper_file=$(recipe_to_cachename ${#the_recipe[@]} \
 						    "$wallpaper_file")
 	fi
-	echo "This should set wallpaper to $wallpaper_file"
+	set_current_wallpaper "$wallpaper_file"
 }
 
 if [[ $1 = -x ]]; then
@@ -186,7 +191,7 @@ case "$1" in
 	dim)	;&
 	blur)	;&
 	tint)
-		set_command $(get_current_wallpaper_filename) "$@"
+		set_command "$(get_current_wallpaper_filename)" "$@"
 		;;
 
 	getfilename)
