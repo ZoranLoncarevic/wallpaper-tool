@@ -39,6 +39,34 @@ extract_arg() {
 	esac
 }
 
+blur()
+{
+	echo convert "$1" -resize 50% -blur 0x${3:-5} -resize 200% "png:$2"
+	convert "$1" -resize 50% -blur 0x${3:-5} -resize 200% "png:$2"
+}
+
+dim()
+{
+	echo convert "$1" -fill black -colorize ${3:-40}% "png:$2"
+	convert "$1" -fill black -colorize ${3:-40}% "png:$2"
+}
+
+tint()
+{
+	IFS=':' read -r -a params <<< "$3"
+	echo convert "$1" -fill "'rgb(${params[0]},${params[1]},${params[2]})'" \
+		-colorize ${params[3]:-40}% "png:$2"
+	convert "$1" -fill "rgb(${params[0]},${params[1]},${params[2]})" \
+		-colorize ${params[3]:-40}% "png:$2"
+}
+
+ensure_cache_exists() {
+	if [[ ! -d "${1%/*}/.wall-cache" ]]; then
+		mkdir "${1%/*}/.wall-cache" ||
+			report_error 6 "Couldn't create cache in ${1%/*}"
+	fi
+}
+
 recipe_to_cachename() {
 	local filename filter
 
@@ -58,10 +86,11 @@ recipe_to_cachename() {
 
 generate_image_from()
 {
+	ensure_cache_exists "$2"
 	from=$(recipe_to_cachename $1 "$2")
 	for ((i=$1;i<${#the_recipe[@]};i++)); do
 		to=$(recipe_to_cachename $(($i+1)) "$2")
-		echo "${the_recipe[i]%%:*} $from $to $(extract_arg ${the_recipe[i]})"
+		${the_recipe[i]%%:*} "$from" "$to" "$(extract_arg ${the_recipe[i]})"
 		from=$to
 	done
 }
