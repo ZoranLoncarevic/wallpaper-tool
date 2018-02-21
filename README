@@ -42,3 +42,44 @@ created in the same directory as the original image.
 (I don't think this is the ideal place for cache; see
 Q1 below for futher discussion.) 
 
+------------------------------------------------
+Q1: Is the right place for cache to be scattered throughout
+the file system wherever there is some file that once served
+as wallpaper?
+
+In one implementation of cache, all modified images are
+cached as
+
+     /path/to/image/.wall-cache/image_filename__recipe        (1)
+
+This has some advantages:
+
+     - it is easy to implement, and
+
+     - given filename in cache, it is easy to extract the
+       original image filename and image recipe.
+
+On the other hand,
+
+     - wallpaper image might be in directory that is not
+       writeable or even on read only medium,
+
+     - with cache scattered throughout file system, it is
+       much harder to, for example, empty the entire cache,
+       than it is the case when whole cache is in centralized
+       location.
+
+Alternative is to move cache to a centralized location, say
+~/.wallpaper/cache/image and store modified image as
+
+     ~/.wallpaper/cache/image/{sha1_hash}
+
+where {sha1_hash} is SHA1 hash of string (1) above used in the
+first implementation to avoid problems with encoding paths in
+filenames. Since this new filename no longer contain the
+name of original file, string (1) is additionaly recorded in
+the file
+
+     ~/.wallpaper/cache/refs/{sha1_hash}
+
+for future reference.
