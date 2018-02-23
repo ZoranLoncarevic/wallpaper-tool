@@ -52,25 +52,24 @@ extract_arg() {
 
 cache2_to_cache1()
 {
+	local cache2=${1:-$(</dev/stdin)}
 	if [[ $cache_type == 2 ]] &&
-	   [[ "$1" =~ ^${CACHE_DIR/#\~/$HOME}/images/* ]]; then
-		cache1=($(head "$CACHE_DIR/refs/${1##*/}")) ||
+	   [[ "$cache2" =~ ^${CACHE_DIR/#\~/$HOME}/images/* ]]; then
+		cache2=($(head "$CACHE_DIR/refs/${cache2##*/}")) ||
 			report_error 7 "Internal cache error"
-		echo "$cache1"
-	else
-		echo "$1"
 	fi
+	echo "$cache2"
 }
 
 cache1_to_cache2()
 {
+	local cache1=${1:-$(</dev/stdin)}
 	if [[ $cache_type == 2 ]] &&
-	   [[ "$1" =~ .*/\.wall-cache/[^/]*__[^/]*$ ]]; then
-		sha1=($(sha1sum <<<"$1"))
-		echo "${CACHE_DIR/#\~/$HOME}/images/$sha1"
-	else
-		echo "$1"
+	   [[ "$cache1" =~ .*/\.wall-cache/[^/]*__[^/]*$ ]]; then
+		sha1=($(sha1sum <<<"$cache1"))
+		cache1=${CACHE_DIR/#\~/$HOME}/images/$sha1
 	fi
+	echo "$cache1"
 }
 
 commit_to_cache2()
@@ -141,8 +140,7 @@ recipe_to_cachename() {
 generate_image_from()
 {
 	ensure_cache_exists "$2"
-	from=$(recipe_to_cachename $1 "$2")
-	from=$(cache1_to_cache2 "$from")
+	from=$(recipe_to_cachename $1 "$2" | cache1_to_cache2)
 	for ((i=$1;i<${#the_recipe[@]};i++)); do
 		to=$(recipe_to_cachename $(($i+1)) "$2")
 		to1=$(cache1_to_cache2 "$to")
@@ -155,8 +153,7 @@ generate_image_from()
 ensure_image_is_cached()
 {
 	for ((i=${#the_recipe[@]};i>=0;i--)); do
-		partial_result=$(recipe_to_cachename $i "$1")
-		partial_result=$(cache1_to_cache2 "$partial_result")
+		partial_result=$(recipe_to_cachename $i "$1" | cache1_to_cache2)
 		if [[ -e "$partial_result" ]] &&
 		   [[ ! "$partial_result" -ot "$1" ]]; then
 			generate_image_from $i "$1"
@@ -206,8 +203,7 @@ get_proposed_file() {
 	fi
 
 	if [[ -e "$proposed_file" ]]; then
-		proposed_file=$(realpath -s "$proposed_file")
-		proposed_file=$(cache2_to_cache1 "$proposed_file") || exit $?
+		proposed_file=$(realpath -s "$proposed_file" | cache2_to_cache1) || exit $?
 		echo "$proposed_file"
 	else
 		report_error 1 "Image $proposed_file does not exists."
