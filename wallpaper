@@ -29,6 +29,10 @@ report_error() {
 	exit $1
 }
 
+debug_log() {
+	echo "$@" >&2
+}
+
 get_current_wallpaper_filename()
 {
 	echo $(gconftool --get /desktop/gnome/background/picture_filename)
@@ -77,20 +81,20 @@ commit_to_cache2()
 
 blur()
 {
-	echo convert "$1" -resize 50% -blur 0x${3:-5} -resize 200% "png:$2"
+	debug_log convert "$1" -resize 50% -blur 0x${3:-5} -resize 200% "png:$2"
 	convert "$1" -resize 50% -blur 0x${3:-5} -resize 200% "png:$2"
 }
 
 dim()
 {
-	echo convert "$1" -fill black -colorize ${3:-40}% "png:$2"
+	debug_log convert "$1" -fill black -colorize ${3:-40}% "png:$2"
 	convert "$1" -fill black -colorize ${3:-40}% "png:$2"
 }
 
 tint()
 {
 	IFS=':' read -r -a params <<< "$3"
-	echo convert "$1" -fill "'rgb(${params[0]},${params[1]},${params[2]})'" \
+	debug_log convert "$1" -fill "'rgb(${params[0]},${params[1]},${params[2]})'" \
 		-colorize ${params[3]:-40}% "png:$2"
 	convert "$1" -fill "rgb(${params[0]},${params[1]},${params[2]})" \
 		-colorize ${params[3]:-40}% "png:$2"
