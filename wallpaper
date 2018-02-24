@@ -60,7 +60,7 @@ IS_CACHE2()
 
 get_current_wallpaper_filename()
 {
-	echo $(gconftool --get /desktop/gnome/background/picture_filename)
+	echo "$(gconftool --get /desktop/gnome/background/picture_filename)"
 }
 
 set_current_wallpaper()
