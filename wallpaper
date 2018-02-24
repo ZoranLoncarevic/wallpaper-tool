@@ -48,6 +48,16 @@ last_file_from_dir()
 	images_from_directory "$1" | tail -n 1
 }
 
+IS_CACHE1()
+{
+	[[ "$1" =~ .*/\.wall-cache/[^/]*__[^/]*$ ]]
+}
+
+IS_CACHE2()
+{
+	[[ "$1" =~ ^${CACHE_DIR/#\~/$HOME}/images/* ]]
+}
+
 get_current_wallpaper_filename()
 {
 	echo $(gconftool --get /desktop/gnome/background/picture_filename)
@@ -68,8 +78,7 @@ extract_arg() {
 cache2_to_cache1()
 {
 	local cache2=${1:-$(</dev/stdin)}
-	if [[ $cache_type == 2 ]] &&
-	   [[ "$cache2" =~ ^${CACHE_DIR/#\~/$HOME}/images/* ]]; then
+	if [[ $cache_type == 2 ]] && IS_CACHE2 "$cache2"; then
 		cache2=($(head "$CACHE_DIR/refs/${cache2##*/}")) ||
 			report_error 7 "Internal cache error"
 	fi
@@ -79,8 +88,7 @@ cache2_to_cache1()
 cache1_to_cache2()
 {
 	local cache1=${1:-$(</dev/stdin)}
-	if [[ $cache_type == 2 ]] &&
-	   [[ "$cache1" =~ .*/\.wall-cache/[^/]*__[^/]*$ ]]; then
+	if [[ $cache_type == 2 ]] && IS_CACHE1 "$cache1"; then
 		sha1=($(sha1sum <<<"$cache1"))
 		cache1=${CACHE_DIR/#\~/$HOME}/images/$sha1
 	fi
@@ -137,7 +145,7 @@ recipe_to_cachename() {
 	if [[ $1 == 0 ]]; then
 		filename=$2
 	else
-		if [[ "$2" =~ /.wall-cache/[^/]*$ ]]; then
+		if IS_CACHE1 "$2"; then
 			filename=$2+
 		else
 			filename=${2%/*}/.wall-cache/${2##*/}__
