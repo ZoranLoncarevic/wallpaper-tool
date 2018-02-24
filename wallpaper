@@ -33,6 +33,21 @@ debug_log() {
 	echo "$@" >&2
 }
 
+images_from_directory()
+{
+	(cd "$1"; ls $LS_FLAGS *.png *.jpg)
+}
+
+first_file_from_dir()
+{
+	images_from_directory "$1" | head -n 1
+}
+
+last_file_from_dir()
+{
+	images_from_directory "$1" | tail -n 1
+}
+
 get_current_wallpaper_filename()
 {
 	echo $(gconftool --get /desktop/gnome/background/picture_filename)
@@ -206,6 +221,9 @@ get_proposed_file() {
 	if [[ "$proposed_file" == "default" ]]; then
 		proposed_file="$DEFAULT_WALLPAPER"
 	fi
+	if [[ -d "$proposed_file" ]]; then
+		proposed_file+="/$(first_file_from_dir "$proposed_file")"
+	fi
 
 	if [[ -e "$proposed_file" ]]; then
 		proposed_file=$(realpath -s "$proposed_file" | cache2_to_cache1) || exit $?
@@ -229,6 +247,8 @@ set_command()
 	wallpaper_file=$(cache1_to_cache2 "$wallpaper_file")
 	set_current_wallpaper "$wallpaper_file"
 }
+
+LS_FLAGS=""
 
 if [[ $1 = -x ]]; then
 	shift
