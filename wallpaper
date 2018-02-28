@@ -35,7 +35,7 @@ debug_log() {
 
 images_from_directory()
 {
-	(cd "$1"; ls $LS_FLAGS *.png *.jpg)
+	(cd "$1"; ls $LS_FLAGS *.png *.jpg) 2>/dev/null
 }
 
 first_file_from_dir()
@@ -99,6 +99,35 @@ commit_to_cache2()
 {
 	echo "$1" >  "$CACHE_DIR/refs/${2##*/}" ||
 		report_error 8 "Can't write to cache"
+}
+
+skip_command()
+{
+	local current=$( get_current_wallpaper_filename | cache2_to_cache1 )
+	local dir file recipe="" wallpaper
+
+	dir="${current%/*}" ; file="${current##*/}"
+
+	if IS_CACHE1 "$current"; then
+		dir="${dir%/\.wall-cache}"
+		recipe="${file##*__}"
+		file="${file%__*}"
+	fi
+
+	wallpaper=$(images_from_directory "$dir" | (
+			case $1 in
+			   (next) sed -n "/$file/{n;p}" ;;
+			   (prev) sed -n "/$file/{x;p;d;}; x" ;;
+			esac ) )
+
+	if [[ "$wallpaper" == "" ]]; then
+		case $1 in
+		   (next) wallpaper=$( first_file_from_dir "$dir" ) ;;
+	           (prev) wallpaper=$( last_file_from_dir "$dir" ) ;;
+		esac
+	fi
+
+	set_command "$dir/$wallpaper"
 }
 
 blur()
@@ -282,10 +311,10 @@ case "$1" in
 		echo "Browse wallpapers."
 		;;
 	next)
-		echo "Next wallpaper."
+		skip_command next
 		;;
 	prev)
-		echo "Previous wallpaper."
+		skip_command prev
 		;;
 	*)
 		echo "Invalid command." >&2
