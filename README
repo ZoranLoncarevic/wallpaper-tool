@@ -93,3 +93,35 @@ the file
      ~/.wallpaper/cache/refs/{sha1_hash}
 
 for future reference.
+
+------------------------------------------------
+
+Next commands in line to be implemented are next/prev to cycle
+thru all wallpapers in directory.
+
+The question that pops up now is, what happens when current
+wallpaper is modified by an image recipe and then you go to
+next (or previous) wallpaper. If you simply cycle through
+image files in directory, then recipe will be lost rendering
+command sequence next+prev (or prev+next) no longer a noop.
+
+I've solved this problem by making image recipes a first
+class citizens and introducing a new kind of image files
+with extension .recipe alongside .png and .jpg. These are
+text files containing single set command like this
+
+     set "desk.jpg" dim 20 blur
+
+with description of how to produce the modified image. When
+latter setting wallpaper with
+
+     wallpaper set some.recipe
+
+image can be modified futher by specifing more filters in
+the command line above.
+
+In order not to lose current image recipe when cycling through
+wallpapers, one now needs only to use another new command
+save that saves current recipe into appropriately named .recipe
+file in directory where original image resides, and then
+switches current wallpaper to that file.
