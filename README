@@ -14,7 +14,9 @@ in single directory, browsing thru wallpapers and applying
 filters like blur, dimming, tinting, etc... (see below).
 Vague future plans include automatic downloading of
 wallpapers from specialized sites, extensive logging,
-undo of all operations.
+undo of all operations, taggig wallpapers, some interactive
+way to change wallpaper in the minimalistic spirit of
+dmenu, rofi, lemonbar and tint2.
 
 RIGHT NOW, I concentrate on set command with syntax
 
