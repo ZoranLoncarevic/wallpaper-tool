@@ -35,7 +35,7 @@ debug_log() {
 
 images_from_directory()
 {
-	(cd "$1"; ls $LS_FLAGS *.png *.jpg) 2>/dev/null
+	(cd "$1"; ls $LS_FLAGS *.png *.jpg *.recipe) 2>/dev/null
 }
 
 first_file_from_dir()
@@ -65,6 +65,7 @@ get_current_wallpaper_filename()
 
 set_current_wallpaper()
 {
+	[[ ! $dry_run == yes ]] &&
 	gconftool -t str --set /desktop/gnome/background/picture_filename "$1"
 }
 
@@ -88,7 +89,8 @@ cache2_to_cache1()
 cache1_to_cache2()
 {
 	local cache1=${1:-$(</dev/stdin)}
-	if [[ $cache_type == 2 ]] && IS_CACHE1 "$cache1"; then
+	if [[ $cache_type == 2 ]] && IS_CACHE1 "$cache1" ||
+	   [[ "$cache1" =~ .recipe$ ]]; then
 		sha1=($(sha1sum <<<"$cache1"))
 		cache1=${CACHE_DIR/#\~/$HOME}/images/$sha1
 	fi
@@ -220,6 +222,29 @@ ensure_image_is_cached()
 	report_error 4 "Missing $partial_result."
 }
 
+ensure_recipe_is_cached()
+{
+	local file recipe_string recipe=()
+
+	[[ $(head "$1" -c 3) == set ]] ||
+		report_error 11 "Invalid recipe $1."
+
+	recipe_string=$(head "$1" -n 1) ||
+		report_error 9 "Can't read $1."
+
+	while IFS= read -r ; do
+		recipe+=( "$REPLY" )
+	done < <(xargs printf '%s\n' <<<$recipe_string)
+
+	produced_file="$( cd "$(dirname $1)" || exit
+			  dry_run=yes set_command "${recipe[@]:1}"
+			  echo "$produced_file" )" || exit
+
+	file=$(cache1_to_cache2 "$1")
+	cp "$(cache1_to_cache2 "$produced_file")" "$file"
+	commit_to_cache2 "$1" "$file"
+}
+
 extract_num() {
 	if [[ $1 =~ ^[0-9:]+$ ]]; then
 		echo ":$1"
@@ -231,6 +256,7 @@ extract_num() {
 }
 
 get_recipe() {
+	the_recipe=()
 	while [[ $# -gt 0 ]]; do
 		filter=$1
 		case $filter in
@@ -262,11 +288,14 @@ get_proposed_file() {
 		proposed_file+="/$(first_file_from_dir "$proposed_file")"
 	fi
 
-	if [[ -e "$proposed_file" ]]; then
-		proposed_file=$(realpath -s "$proposed_file" | cache2_to_cache1) || exit $?
-		echo "$proposed_file"
-	else
+	if [[ ! -e "$proposed_file" ]]; then
 		report_error 1 "Image $proposed_file does not exists."
+	else
+		proposed_file=$(realpath -s "$proposed_file") || exit $?
+		if [[ "$proposed_file" =~ \.recipe$ ]]; then
+			ensure_recipe_is_cached "$proposed_file"
+		fi
+		echo "$(cache2_to_cache1 "$proposed_file")"
 	fi
 }
 
@@ -281,11 +310,14 @@ set_command()
 		wallpaper_file=$(recipe_to_cachename ${#the_recipe[@]} \
 						    "$wallpaper_file")
 	fi
+	produced_file=$wallpaper_file
 	wallpaper_file=$(cache1_to_cache2 "$wallpaper_file")
 	set_current_wallpaper "$wallpaper_file"
 }
 
 LS_FLAGS=""
+dry_run=""
+unset CDPATH
 
 if [[ $1 = -x ]]; then
 	shift
