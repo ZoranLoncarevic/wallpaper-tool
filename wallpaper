@@ -21,6 +21,7 @@ Commands:
   prev        -- change to preious wallpaper
   browse      -- browse wallpapers
   getfilename -- print current wallpaper filename
+  getrecipe   -- print current wallpaper recipe
 EOF_USAGE
 }
 
@@ -123,6 +124,29 @@ recompose_cache1()
 		echo "$1/$2"
 	else
 		echo "$1/.wall-cache/$2__$3"
+	fi
+}
+
+transform_recipe()
+{
+	local recipe=${1//\+/ } arg result=""
+
+	for arg in $recipe; do
+		result+=${arg/:/ }" "
+	done
+	echo "$result"
+}
+
+get_current_wallpaper_recipe()
+{
+	local wallpaper=$(get_current_wallpaper_filename | cache2_to_cache1)
+
+	if IS_CACHE1 "$wallpaper"; then
+		split_cache1_into_components "$wallpaper"
+		printf 'set "%s" %s\n' "$C1_DIR/$C1_FILE" \
+		                       "$(transform_recipe "$C1_RECIPE")"
+	else
+		printf 'set "%s"\n' "$wallpaper"
 	fi
 }
 
@@ -356,6 +380,9 @@ case "$1" in
 
 	getfilename)
 		echo $(get_current_wallpaper_filename)
+		;;
+	getrecipe)
+		echo "$(get_current_wallpaper_recipe)"
 		;;
 	browse)
 		echo "Browse wallpapers."
