@@ -103,18 +103,36 @@ commit_to_cache2()
 		report_error 8 "Can't write to cache"
 }
 
+split_cache1_into_components()
+{ #
+	C1_DIR="${1%/*}"
+	C1_FILE="${1##*/}"
+
+	if IS_CACHE1 "$1"; then
+		C1_DIR="${C1_DIR%/\.wall-cache}"
+		C1_RECIPE="${C1_FILE##*__}"
+		C1_FILE="${C1_FILE%__*}"
+	else
+		C1_RECIPE=""
+	fi
+}
+
+recompose_cache1()
+{
+	if [[ -z "$3" ]]; then
+		echo "$1/$2"
+	else
+		echo "$1/.wall-cache/$2__$3"
+	fi
+}
+
 skip_command()
 {
 	local current=$( get_current_wallpaper_filename | cache2_to_cache1 )
 	local dir file recipe="" wallpaper
 
-	dir="${current%/*}" ; file="${current##*/}"
-
-	if IS_CACHE1 "$current"; then
-		dir="${dir%/\.wall-cache}"
-		recipe="${file##*__}"
-		file="${file%__*}"
-	fi
+	split_cache1_into_components "$current"
+	dir=$C1_DIR; file=$C1_FILE
 
 	wallpaper=$(images_from_directory "$dir" | (
 			case $1 in
