@@ -127,6 +127,15 @@ recompose_cache1()
 	fi
 }
 
+get_current_wallpaper_cache1()
+{
+	if [[ -z "$C1_WALLPAPER" ]]; then
+		C1_WALLPAPER=$(get_current_wallpaper_filename |
+		                cache2_to_cache1)
+	fi
+	echo "$C1_WALLPAPER"
+}
+
 transform_recipe()
 {
 	local recipe=${1//\+/ } arg result=""
@@ -139,7 +148,7 @@ transform_recipe()
 
 get_current_wallpaper_recipe()
 {
-	local wallpaper=$(get_current_wallpaper_filename | cache2_to_cache1)
+	local wallpaper=$( get_current_wallpaper_cache1 )
 
 	if IS_CACHE1 "$wallpaper"; then
 		split_cache1_into_components "$wallpaper"
@@ -152,7 +161,7 @@ get_current_wallpaper_recipe()
 
 skip_command()
 {
-	local current=$( get_current_wallpaper_filename | cache2_to_cache1 )
+	local current=$( get_current_wallpaper_cache1 )
 	local dir file recipe="" wallpaper
 
 	split_cache1_into_components "$current"
