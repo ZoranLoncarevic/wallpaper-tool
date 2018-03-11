@@ -22,6 +22,7 @@ Commands:
   browse      -- browse wallpapers
   getfilename -- print current wallpaper filename
   getrecipe   -- print current wallpaper recipe
+  save        -- save current recipe
 EOF_USAGE
 }
 
@@ -156,6 +157,36 @@ get_current_wallpaper_recipe()
 		                       "$(transform_recipe "$C1_RECIPE")"
 	else
 		printf 'set "%s"\n' "$wallpaper"
+	fi
+}
+
+find_next_available_name()
+{
+	local file="$1/$2.recipe"
+
+	if [[ -e "$file" ]]; then
+		for ((i=1;i<256;i++)); do
+			[[ ! -e "$1/$2.$i.recipe" ]] &&
+				break;
+		done
+		[[ $i -ge 256 ]] && report_error 12 "Too many recipes."
+		file="$1/$2.$i.recipe"
+	fi
+
+	echo "$file"
+}
+
+save_command()
+{
+	local wallpaper=$(get_current_wallpaper_cache1) filename
+	      C1_WALLPAPER=$wallpaper
+
+	split_cache1_into_components "$wallpaper"
+	if [[ ! -z "$C1_RECIPE" ]]; then
+		filename=$(find_next_available_name "$C1_DIR" "$C1_FILE")
+		get_current_wallpaper_recipe |
+			sed 's/set ".*\//set "/'> $filename
+		set_command "$filename"
 	fi
 }
 
@@ -392,6 +423,9 @@ case "$1" in
 		;;
 	getrecipe)
 		echo "$(get_current_wallpaper_recipe)"
+		;;
+	save)
+		save_command "$@"
 		;;
 	browse)
 		echo "Browse wallpapers."
