@@ -5,6 +5,8 @@ arg0=${0##*/}
 cache_type=2
 DEFAULT_WALLPAPER="${DEFAULT_WALLPAPER:-/usr/share/backgrounds/Green_by_Alan_Mattila.jpg}"
 CACHE_DIR=~/.wallpaper/cache
+TAG_DATABASE=~/.wallpaper/tags
+TAG_QUERY_RESULT=~/.wallpaper/query-result
 
 declare -a the_recipe=()
 
@@ -23,6 +25,7 @@ Commands:
   getfilename -- print current wallpaper filename
   getrecipe   -- print current wallpaper recipe
   save        -- save current recipe
+  tag         -- tag current wallpaper
 EOF_USAGE
 }
 
@@ -157,6 +160,51 @@ get_current_wallpaper_recipe()
 		                       "$(transform_recipe "$C1_RECIPE")"
 	else
 		printf 'set "%s"\n' "$wallpaper"
+	fi
+}
+
+tag_command()
+{
+	local recipe=$( get_current_wallpaper_recipe )
+	local sha1=($(sha1sum <<<"$recipe"))
+
+	while [[ $# -gt 0  ]]; do
+
+		if [[ $1 =~ ^- ]]; then
+			rm -f "$TAG_DATABASE/${1#-}/$sha1.recipe"
+		else
+			mkdir -p "$TAG_DATABASE/$1"
+			echo "$recipe" > "$TAG_DATABASE/$1/$sha1.recipe"
+		fi
+		shift
+	done
+}
+
+query_by_tag()
+{
+	local tag count=( ${1//+/ } )
+
+	if [[ ${#count[@]} == 1 ]]; then
+		echo "$TAG_DATABASE/$count"
+		return
+	fi
+
+	mkdir -p "$TAG_QUERY_RESULT.in.progress"
+
+	(	for tag in ${1//+/ }; do
+			ls "$TAG_DATABASE/$tag" 2>/dev/null
+		done
+
+	) | sort | uniq -c | sort -nr | grep "^ *${#count[@]}" | cut -c 9- |
+	    xargs -d '\n' -I {} ln "$TAG_DATABASE/$count/{}" "$TAG_QUERY_RESULT.in.progress"
+
+	if [[ ! -z "$(ls -A "$TAG_QUERY_RESULT.in.progress")" ]]; then
+		rm -rf "$TAG_QUERY_RESULT" &&
+		mv "$TAG_QUERY_RESULT.in.progress" "$TAG_QUERY_RESULT" ||
+			report_error 100 "Couldn't move $TAG_QUERY_RESULT.in.progress"
+		echo "$TAG_QUERY_RESULT"
+	else
+		report_error 101 "No matchig wallpapers."
 	fi
 }
 
@@ -366,11 +414,14 @@ get_proposed_file() {
 	if [[ "$proposed_file" == "default" ]]; then
 		proposed_file="$DEFAULT_WALLPAPER"
 	fi
+	if [[ "$proposed_file" =~ ^@ ]]; then
+		proposed_file=$(query_by_tag ${proposed_file#@}) || exit
+	fi
 	if [[ -d "$proposed_file" ]]; then
 		proposed_file+="/$(first_file_from_dir "$proposed_file")"
 	fi
 
-	if [[ ! -e "$proposed_file" ]]; then
+	if [[ ! -f "$proposed_file" ]]; then
 		report_error 1 "Image $proposed_file does not exists."
 	else
 		proposed_file=$(realpath -s "$proposed_file") || exit $?
@@ -426,6 +477,10 @@ case "$1" in
 		;;
 	save)
 		save_command "$@"
+		;;
+	tag)
+		shift
+		tag_command "$@"
 		;;
 	browse)
 		echo "Browse wallpapers."
