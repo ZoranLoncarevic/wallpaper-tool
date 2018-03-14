@@ -125,3 +125,36 @@ wallpapers, one now needs only to use another new command
 save that saves current recipe into appropriately named .recipe
 file in directory where original image resides, and then
 switches current wallpaper to that file.
+
+------------------------------------------------
+
+NEXT area is tagging. The fact that certain recipe is tagged
+with tag tag1 is recorded by a presence of .recipe file
+containg that recipe in
+
+     ~/.wallpaper/tags/tag1/
+
+directory. To tag current wallpaper recipe, use new command
+
+     wallpaper tag tag1 tag2 ...
+
+In the future, I envision arbitrary queries like
+
+     (green or blue) and (smooth or rough) and not square
+
+but for now only conjuction is supported and queries have
+the following syntax
+
+     wallpaper set @green+smooth
+
+If query is just by a single tag, wallpaper is pointed directly
+to directory
+
+     ~/.wallpaper/tags/tag1/
+
+and if more tags are involved, the appropriate recipe files
+are linked to directory
+
+     ~/.wallpaper/query-result
+
+and wallpaper tool is pointed there.
