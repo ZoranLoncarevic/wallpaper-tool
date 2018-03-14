@@ -74,6 +74,17 @@ set_current_wallpaper()
 	gconftool -t str --set /desktop/gnome/background/picture_filename "$1"
 }
 
+make_link()
+{
+	if [[ ! -e "$2" ]]; then
+		if IS_CACHE2 "$1"; then
+			ln "$1" "$2"
+		else
+			ln -s "$1" "$2"
+		fi
+	fi
+}
+
 extract_arg() {
 	case $1 in
 		(*:*) echo ${1#*:} ;;
@@ -371,7 +382,7 @@ ensure_recipe_is_cached()
 			  echo "$produced_file" )" || exit
 
 	file=$(cache1_to_cache2 "$1")
-	cp "$(cache1_to_cache2 "$produced_file")" "$file"
+	make_link "$(cache1_to_cache2 "$produced_file")" "$file"
 	commit_to_cache2 "$1" "$file"
 }
 
