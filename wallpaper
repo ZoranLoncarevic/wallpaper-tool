@@ -40,7 +40,8 @@ debug_log() {
 
 images_from_directory()
 {
-	(cd "$1"; ls $LS_FLAGS *.png *.jpg *.recipe) 2>/dev/null
+	local pattern=${2:-'*.png *.jpg *.recipe'}
+	( cd "$1" && eval "ls $LS_FLAGS $pattern" ) 2>/dev/null
 }
 
 first_file_from_dir()
