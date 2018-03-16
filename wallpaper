@@ -187,6 +187,18 @@ get_current_wallpaper_recipe()
 	fi
 }
 
+cache_command()
+{
+	if [[ -d "$1" ]]; then
+		images_from_directory "$1" '*.recipe' |
+		while IFS= read -r ; do
+			ensure_recipe_is_cached "$(realpath -s "$1/$REPLY")"
+		done
+	else
+		dry_run=yes set_command "$@"
+	fi
+}
+
 tag_command()
 {
 	local recipe=$( get_current_wallpaper_recipe )
@@ -377,13 +389,16 @@ ensure_image_is_cached()
 
 ensure_recipe_is_cached()
 {
-	local file recipe_string recipe=()
+	local recipe_string recipe=() \
+	      file=$(cache1_to_cache2 "$1")
+
+	[[ ! $1 =~ \.recipe$ ]] && return 0
+	is_unmet_dependency_of "$file" "$1" || return 0
 
 	[[ $(head "$1" -c 3) == set ]] ||
-		report_error 11 "Invalid recipe $1."
+		return 11 # Invalid recipe
 
-	recipe_string=$(head "$1" -n 1) ||
-		report_error 9 "Can't read $1."
+	recipe_string=$(head "$1" -n 1)
 
 	while IFS= read -r ; do
 		recipe+=( "$REPLY" )
@@ -393,7 +408,6 @@ ensure_recipe_is_cached()
 			  dry_run=yes set_command "${recipe[@]:1}"
 			  echo "$produced_file" )" || exit
 
-	file=$(cache1_to_cache2 "$1")
 	make_link "$(cache1_to_cache2 "$produced_file")" "$file"
 	commit_to_cache2 "$1" "$file"
 }
@@ -449,7 +463,10 @@ get_proposed_file() {
 	else
 		proposed_file=$(realpath -s "$proposed_file") || exit $?
 		if [[ "$proposed_file" =~ \.recipe$ ]]; then
-			ensure_recipe_is_cached "$proposed_file"
+			ensure_recipe_is_cached "$proposed_file" ||
+			if [[ ! $dry_run == yes ]]; then
+				report_error 19 "Invalid $proposed_file file."
+			fi
 		fi
 		echo "$(cache2_to_cache1 "$proposed_file")"
 	fi
@@ -497,6 +514,10 @@ case "$1" in
 		;;
 	getrecipe)
 		echo "$(get_current_wallpaper_recipe)"
+		;;
+	cache)
+		shift
+		cache_command "$@"
 		;;
 	save)
 		save_command "$@"
