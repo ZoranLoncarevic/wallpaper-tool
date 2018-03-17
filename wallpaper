@@ -75,6 +75,11 @@ set_current_wallpaper()
 	gconftool -t str --set /desktop/gnome/background/picture_filename "$1"
 }
 
+swap_halfs_at()
+{
+	sed -n "0,/^$1\$/H ; /^$1\$/,\$p ; \${g;s/\n$1\$//;s/^\n//;p}"
+}
+
 make_link()
 {
 	if [[ ! -e "$2" ]]; then
@@ -185,6 +190,27 @@ get_current_wallpaper_recipe()
 	else
 		printf 'set "%s"\n' "$wallpaper"
 	fi
+}
+
+browse_command()
+{
+	local wallpaper=$( get_current_wallpaper_cache1 )
+
+	split_cache1_into_components "$wallpaper"
+	cache_command "$C1_DIR" &
+
+	images_from_directory "$C1_DIR" |
+	swap_halfs_at "$C1_FILE" |
+	while IFS= read -r ; do
+		case "$REPLY" in
+			*.recipe) echo "$(cache1_to_cache2 "$C1_DIR/$REPLY")" ;;
+			*) [[ ! -z "$REPLY" ]] && echo "$C1_DIR/$REPLY"
+		esac
+	done |
+	meh -list |
+	while IFS= read -r ; do
+		set_command "$REPLY"
+	done
 }
 
 cache_command()
@@ -497,6 +523,8 @@ if [[ $1 = -x ]]; then
 	set -x
 fi
 
+trap "trap - SIGTERM && pkill -P $$" SIGINT SIGTERM EXIT
+
 case "$1" in
 
 	set)
@@ -527,7 +555,7 @@ case "$1" in
 		tag_command "$@"
 		;;
 	browse)
-		echo "Browse wallpapers."
+		browse_command
 		;;
 	next)
 		skip_command next
