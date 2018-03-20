@@ -169,6 +169,26 @@ get_current_wallpaper_cache1()
 	echo "$C1_WALLPAPER"
 }
 
+prepare_preview()
+{
+	local file
+	mkdir -p "$TAG_QUERY_RESULT.in.progress"
+
+	shift
+	for file in "$@"; do
+		ln -s "$(realpath -s "$file")" "$TAG_QUERY_RESULT.in.progress"
+	done
+
+	if [[ ! -z "$(ls -A "$TAG_QUERY_RESULT.in.progress")" ]]; then
+		rm -rf "$TAG_QUERY_RESULT" &&
+		mv "$TAG_QUERY_RESULT.in.progress" "$TAG_QUERY_RESULT" ||
+			report_error 100 "Couldn't move $TAG_QUERY_RESULT.in.progress"
+		echo "$TAG_QUERY_RESULT"
+	else
+		report_error 101 "No matchig wallpapers."
+	fi
+}
+
 transform_recipe()
 {
 	local recipe=${1//\+/ } arg result=""
@@ -480,6 +500,9 @@ get_proposed_file() {
 	if [[ "$proposed_file" =~ ^@ ]]; then
 		proposed_file=$(query_by_tag ${proposed_file#@}) || exit
 	fi
+	if [[ "$proposed_file" == pick: ]]; then
+		proposed_file=$(prepare_preview "$@")
+	fi
 	if [[ -d "$proposed_file" ]]; then
 		proposed_file+="/$(first_file_from_dir "$proposed_file")"
 	fi
@@ -502,8 +525,10 @@ set_command()
 {
 	local wallpaper_file 
 
-	wallpaper_file=$(get_proposed_file "$1") || exit $?
-	shift ; get_recipe "$@"
+	wallpaper_file=$(get_proposed_file "$@") || exit $?
+	if [[ ! "$1" == pick: ]]; then
+		shift ; get_recipe "$@"
+	fi
 	if (( ${#the_recipe[@]} > 0 )); then
 		ensure_image_is_cached $wallpaper_file
 		wallpaper_file=$(recipe_to_cachename ${#the_recipe[@]} \
