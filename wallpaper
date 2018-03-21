@@ -103,6 +103,18 @@ is_unmet_dependency_of()
 	fi
 }
 
+switch_in_progress_with_main()
+{
+	if [[ ! -z "$(ls -A "$1.in.progress")" ]]; then
+		rm -rf "$1" &&
+		mv "$1.in.progress" "$1" ||
+			report_error 100 "Couldn't move $1.in.progress"
+	else
+		rmdir "$1.in.progress"
+		report_error 101 "No matchig wallpapers."
+	fi
+}
+
 extract_arg() {
 	case $1 in
 		(*:*) echo ${1#*:} ;;
@@ -179,14 +191,8 @@ prepare_preview()
 		ln -s "$(realpath -s "$file")" "$TAG_QUERY_RESULT.in.progress"
 	done
 
-	if [[ ! -z "$(ls -A "$TAG_QUERY_RESULT.in.progress")" ]]; then
-		rm -rf "$TAG_QUERY_RESULT" &&
-		mv "$TAG_QUERY_RESULT.in.progress" "$TAG_QUERY_RESULT" ||
-			report_error 100 "Couldn't move $TAG_QUERY_RESULT.in.progress"
-		echo "$TAG_QUERY_RESULT"
-	else
-		report_error 101 "No matchig wallpapers."
-	fi
+	switch_in_progress_with_main "$TAG_QUERY_RESULT"
+	echo "$TAG_QUERY_RESULT"
 }
 
 transform_recipe()
@@ -280,14 +286,8 @@ query_by_tag()
 	) | sort | uniq -c | sort -nr | grep "^ *${#count[@]}" | cut -c 9- |
 	    xargs -d '\n' -I {} ln "$TAG_DATABASE/$count/{}" "$TAG_QUERY_RESULT.in.progress"
 
-	if [[ ! -z "$(ls -A "$TAG_QUERY_RESULT.in.progress")" ]]; then
-		rm -rf "$TAG_QUERY_RESULT" &&
-		mv "$TAG_QUERY_RESULT.in.progress" "$TAG_QUERY_RESULT" ||
-			report_error 100 "Couldn't move $TAG_QUERY_RESULT.in.progress"
-		echo "$TAG_QUERY_RESULT"
-	else
-		report_error 101 "No matchig wallpapers."
-	fi
+	switch_in_progress_with_main "$TAG_QUERY_RESULT"
+	echo "$TAG_QUERY_RESULT"
 }
 
 find_next_available_name()
