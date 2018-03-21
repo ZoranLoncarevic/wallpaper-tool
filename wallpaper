@@ -115,6 +115,17 @@ switch_in_progress_with_main()
 	fi
 }
 
+urldecode() {
+# urldecode <string>, https://gist.github.com/cdown/1163649
+
+	if [[ "$1" =~ ^file:\/\/ ]]; then
+		local url_encoded="${1#file:\/\/}"
+		printf '%b' "${url_encoded//%/\\x}"
+	else
+		echo $1
+	fi
+}
+
 extract_arg() {
 	case $1 in
 		(*:*) echo ${1#*:} ;;
@@ -188,6 +199,7 @@ prepare_preview()
 
 	shift
 	for file in "$@"; do
+		file=$(urldecode "$file")
 		ln -s "$(realpath -s "$file")" "$TAG_QUERY_RESULT.in.progress"
 	done
 
@@ -502,6 +514,9 @@ get_proposed_file() {
 	fi
 	if [[ "$proposed_file" == pick: ]]; then
 		proposed_file=$(prepare_preview "$@")
+	fi
+	if [[ "$proposed_file" =~ file:// ]]; then
+		proposed_file=$(urldecode "$proposed_file")
 	fi
 	if [[ -d "$proposed_file" ]]; then
 		proposed_file+="/$(first_file_from_dir "$proposed_file")"
