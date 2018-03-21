@@ -539,7 +539,7 @@ set_command()
 	set_current_wallpaper "$wallpaper_file"
 }
 
-LS_FLAGS=""
+LS_FLAGS="-t"
 dry_run=""
 unset CDPATH
 
