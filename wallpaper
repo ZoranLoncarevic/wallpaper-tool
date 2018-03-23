@@ -447,10 +447,10 @@ ensure_image_is_cached()
 
 ensure_recipe_is_cached()
 {
-	local recipe_string recipe=() \
-	      file=$(cache1_to_cache2 "$1")
-
 	[[ ! $1 =~ \.recipe$ ]] && return 0
+	local recipe_string recipe=()
+	local file=$(cache1_to_cache2 "$1")
+
 	is_unmet_dependency_of "$file" "$1" || return 0
 
 	[[ $(head "$1" -c 3) == set ]] ||
@@ -466,6 +466,7 @@ ensure_recipe_is_cached()
 			  dry_run=yes set_command "${recipe[@]:1}"
 			  echo "$produced_file" )" || exit
 
+	local file=$(cache1_to_cache2 "$1")
 	make_link "$(cache1_to_cache2 "$produced_file")" "$file"
 	commit_to_cache2 "$1" "$file"
 }
