@@ -232,9 +232,16 @@ get_current_wallpaper_recipe()
 
 browse_command()
 {
-	local wallpaper=$( get_current_wallpaper_cache1 )
+	local target touched_wallpaper=""
 
-	split_cache1_into_components "$wallpaper"
+	if [[ $# == 0 ]]; then
+		target=$( get_current_wallpaper_cache1 )
+	else
+		target=$( TAG_QUERY_RESULT=$TAG_QUERY_RESULT.browse \
+			  get_proposed_file "$@" ) || exit
+	fi
+
+	split_cache1_into_components "$target"
 	cache_command "$C1_DIR" &
 
 	images_from_directory "$C1_DIR" |
@@ -249,6 +256,15 @@ browse_command()
 	while IFS= read -r ; do
 		set_command "$REPLY"
 	done
+
+	if [[ "$C1_DIR" == "$TAG_QUERY_RESULT.browse" ]]; then
+		touched_wallpaper=$( get_current_wallpaper_cache1 )
+		if [[ "$touched_wallpaper" =~ ^$TAG_QUERY_RESULT.browse ]]; then
+			rm -rf "$TAG_QUERY_RESULT"
+			mv "$TAG_QUERY_RESULT.browse" "$TAG_QUERY_RESULT"
+			set_command "${touched_wallpaper/$TAG_QUERY_RESULT.browse/$TAG_QUERY_RESULT}"
+		fi
+	fi
 }
 
 cache_command()
@@ -555,7 +571,7 @@ set_command()
 	set_current_wallpaper "$wallpaper_file"
 }
 
-LS_FLAGS="-t"
+LS_FLAGS="-tL"
 dry_run=""
 unset CDPATH
 
@@ -596,7 +612,8 @@ case "$1" in
 		tag_command "$@"
 		;;
 	browse)
-		browse_command
+		shift
+		browse_command "$@"
 		;;
 	next)
 		skip_command next
