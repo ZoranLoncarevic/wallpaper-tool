@@ -393,6 +393,12 @@ tint()
 		-colorize ${params[3]:-40}% "png:$2"
 }
 
+flop()
+{
+	debug_log convert "$1" -flop "png:$2"
+	convert "$1" -flop "png:$2"
+}
+
 ensure_cache_exists()
 {
 	case $cache_type in
@@ -505,7 +511,8 @@ get_recipe() {
 
 			dim)	;&
 			blur)	;&
-			tint)
+			tint)	;&
+			flop)
 				argument=$(extract_num $2) && shift
 				the_recipe+=("$filter$argument")
 				shift
@@ -590,7 +597,8 @@ case "$1" in
 		;;
 	dim)	;&
 	blur)	;&
-	tint)
+	tint)	;&
+	flop)
 		set_command "$(get_current_wallpaper_filename)" "$@"
 		;;
 
