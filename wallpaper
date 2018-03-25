@@ -415,6 +415,18 @@ crop()
 	convert "$1" $gravity -crop $resolution+0+0 "png:$2"
 }
 
+fit()
+{
+	local resolution=$(xdpyinfo | grep dimensions | sed -r 's/^[^0-9]*([0-9]+x[0-9]+).*$/\1/') \
+	      color=${3:-0:0:0}
+
+	color=${color//:/,}
+	debug_log convert "$1" -resize $resolution\> \
+		     -size $resolution "xc:rgb($color)" +swap -gravity center -composite "png:$2"
+	convert "$1" -resize $resolution\> \
+		     -size $resolution "xc:rgb($color)" +swap -gravity center -composite "png:$2"
+}
+
 ensure_cache_exists()
 {
 	case $cache_type in
@@ -539,7 +551,8 @@ get_recipe() {
 			dim)	;&
 			blur)	;&
 			tint)	;&
-			flop)
+			flop)	;&
+			fit)
 				argument=$(extract_num $2) && shift
 				;;
 			crop)
@@ -629,7 +642,8 @@ case "$1" in
 	blur)	;&
 	tint)	;&
 	flop)	;&
-	crop)
+	crop)	;&
+	fit)
 		set_command "$(get_current_wallpaper_filename)" "$@"
 		;;
 
