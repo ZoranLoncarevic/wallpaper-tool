@@ -399,6 +399,22 @@ flop()
 	convert "$1" -flop "png:$2"
 }
 
+crop()
+{
+	local gravity \
+	      resolution=$(xdpyinfo | grep dimensions | sed -r 's/^[^0-9]*([0-9]+x[0-9]+).*$/\1/')
+	case $3 in
+		top)	gravity="-gravity North";;
+		bottom)	gravity="-gravity South";;
+		left)	gravity="-gravity East";;
+		right)	gravity="-gravity West";;
+		center)	gravity="-gravity Center";;
+	esac
+
+	debug_log convert "$1" $gravity -crop $resolution+0+0 "png:$2"
+	convert "$1" $gravity -crop $resolution+0+0 "png:$2"
+}
+
 ensure_cache_exists()
 {
 	case $cache_type in
@@ -493,6 +509,17 @@ ensure_recipe_is_cached()
 	commit_to_cache2 "$1" "$file"
 }
 
+extract_crop_arg()
+{
+	case $1 in
+		top|bottom|left|right|center) 	echo ":$1"
+						return 0;;
+
+		*)				echo ""
+						return 1;;
+	esac
+}
+
 extract_num() {
 	if [[ $1 =~ ^[0-9:]+$ ]]; then
 		echo ":$1"
@@ -514,13 +541,16 @@ get_recipe() {
 			tint)	;&
 			flop)
 				argument=$(extract_num $2) && shift
-				the_recipe+=("$filter$argument")
-				shift
+				;;
+			crop)
+				argument=$(extract_crop_arg $2) && shift
 				;;
 			*)
 				report_error 2 "Invalid operation $filter"
 				;;
 		esac
+		the_recipe+=("$filter$argument")
+		shift
 	done
 }
 
@@ -598,7 +628,8 @@ case "$1" in
 	dim)	;&
 	blur)	;&
 	tint)	;&
-	flop)
+	flop)	;&
+	crop)
 		set_command "$(get_current_wallpaper_filename)" "$@"
 		;;
 
