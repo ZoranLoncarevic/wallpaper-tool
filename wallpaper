@@ -75,6 +75,11 @@ set_current_wallpaper()
 	gconftool -t str --set /desktop/gnome/background/picture_filename "$1"
 }
 
+get_screen_resolution()
+{
+	echo "$(xdpyinfo | grep dimensions | sed -r 's/^[^0-9]*([0-9]+x[0-9]+).*$/\1/')"
+}
+
 swap_halfs_at()
 {
 	sed -n "0,/^$1\$/H ; /^$1\$/,\$p ; \${g;s/\n$1\$//;s/^\n//;p}"
@@ -402,7 +407,7 @@ flop()
 crop()
 {
 	local gravity \
-	      resolution=$(xdpyinfo | grep dimensions | sed -r 's/^[^0-9]*([0-9]+x[0-9]+).*$/\1/')
+	      resolution=$( get_screen_resolution )
 	case $3 in
 		top)	gravity="-gravity North";;
 		bottom)	gravity="-gravity South";;
@@ -417,8 +422,7 @@ crop()
 
 fit()
 {
-	local resolution=$(xdpyinfo | grep dimensions | sed -r 's/^[^0-9]*([0-9]+x[0-9]+).*$/\1/') \
-	      color=${3:-0:0:0}
+	local resolution=$( get_screen_resolution ) color=${3:-0:0:0}
 
 	color=${color//:/,}
 	debug_log convert "$1" -resize $resolution\> \
