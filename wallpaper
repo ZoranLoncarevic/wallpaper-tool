@@ -138,6 +138,29 @@ extract_arg() {
 	esac
 }
 
+corner_to_gravity()
+{
+	local gravity
+	case $1 in
+		top)		gravity="-gravity North";;
+		bottom)		gravity="-gravity South";;
+		left)		gravity="-gravity West";;
+		right)		gravity="-gravity East";;
+		top_left)	gravity="-gravity NortWest";;
+		top_right)	gravity="-gravity NortEast";;
+		bottom_left)	gravity="-gravity SouthWest";;
+		bottom_right)	gravity="-gravity SouthEast";;
+		center)		gravity="-gravity Center";;
+	esac
+
+	if [[ -z "$gravity" ]]; then
+		return 1
+	else
+		echo "$gravity"
+		return 0
+	fi
+}
+
 cache2_to_cache1()
 {
 	local cache2=${1:-$(</dev/stdin)}
@@ -406,15 +429,8 @@ flop()
 
 crop()
 {
-	local gravity \
+	local gravity=$(corner_to_gravity "$3") \
 	      resolution=$( get_screen_resolution )
-	case $3 in
-		top)	gravity="-gravity North";;
-		bottom)	gravity="-gravity South";;
-		left)	gravity="-gravity East";;
-		right)	gravity="-gravity West";;
-		center)	gravity="-gravity Center";;
-	esac
 
 	debug_log convert "$1" $gravity -crop $resolution+0+0 "png:$2"
 	convert "$1" $gravity -crop $resolution+0+0 "png:$2"
