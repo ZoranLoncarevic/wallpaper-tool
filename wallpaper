@@ -495,6 +495,7 @@ apply_filter()
 
 generate_image_from()
 {
+	local i from to
 	ensure_cache_exists "$2"
 	from=$(recipe_to_cachename $1 "$2" | cache1_to_cache2)
 	for ((i=$1;i<${#the_recipe[@]};i++)); do
