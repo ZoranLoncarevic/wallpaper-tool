@@ -56,7 +56,7 @@ last_file_from_dir()
 
 IS_CACHE1()
 {
-	[[ "$1" =~ .*/\.wall-cache/[^/]*__[^/]*$ ]]
+	[[ "$1" =~ .*/\.wall-cache/[^/]*__.*$ ]]
 }
 
 IS_CACHE2()
@@ -165,7 +165,7 @@ cache2_to_cache1()
 {
 	local cache2=${1:-$(</dev/stdin)}
 	if [[ $cache_type == 2 ]] && IS_CACHE2 "$cache2"; then
-		cache2=($(head "$CACHE_DIR/refs/${cache2##*/}")) ||
+		cache2=$(head "$CACHE_DIR/refs/${cache2##*/}") ||
 			report_error 7 "Internal cache error"
 	fi
 	echo "$cache2"
@@ -190,13 +190,13 @@ commit_to_cache2()
 
 split_cache1_into_components()
 { #
-	C1_DIR="${1%/*}"
-	C1_FILE="${1##*/}"
+	C1_FILE=${1%__*}
+	C1_RECIPE=${1##*__}
+	C1_DIR="${C1_FILE%/*}"
+	C1_FILE="${C1_FILE##*/}"
 
 	if IS_CACHE1 "$1"; then
 		C1_DIR="${C1_DIR%/\.wall-cache}"
-		C1_RECIPE="${C1_FILE##*__}"
-		C1_FILE="${C1_FILE%__*}"
 	else
 		C1_RECIPE=""
 	fi
@@ -237,10 +237,21 @@ prepare_preview()
 
 transform_recipe()
 {
-	local recipe=${1//\+/ } arg result=""
+	local recipe=$1 arg result=""
 
-	for arg in $recipe; do
-		result+=${arg/:/ }" "
+	while [[ ! -z "$recipe" ]]; do
+		if [[ ! $recipe =~ [:+] ]]; then
+			result+=$recipe
+			recipe=""
+		elif [[ $recipe =~ ^([^\"+:]*)[:+] ]]; then
+			result+="${BASH_REMATCH[1]} "
+			recipe=${recipe:${#BASH_REMATCH[0]}}
+		elif [[ $recipe =~ ^\"(\\.|[^\\\"])*\" ]]; then
+			result+=${BASH_REMATCH[0]}
+			recipe=${recipe:${#BASH_REMATCH[0]}}
+		else
+			report_error 130 "Invalid recipe $1 in cache."
+		fi
 	done
 	echo "$result"
 }
@@ -488,7 +499,7 @@ recipe_to_cachename() {
 apply_filter()
 {
 	local to=$(cache1_to_cache2 "$3")
-	${the_recipe[$1]%%:*} "$2" "$to" "$(extract_arg ${the_recipe[$1]})" || exit $?
+	${the_recipe[$1]%%:*} "$2" "$to" "$(extract_arg "${the_recipe[$1]}")" || exit $?
 	commit_to_cache2 "$3" "$to"
 	echo "$to"
 }
@@ -633,7 +644,7 @@ set_command()
 		shift ; get_recipe "$@"
 	fi
 	if (( ${#the_recipe[@]} > 0 )); then
-		ensure_image_is_cached $wallpaper_file
+		ensure_image_is_cached "$wallpaper_file"
 		wallpaper_file=$(recipe_to_cachename ${#the_recipe[@]} \
 						    "$wallpaper_file")
 	fi
