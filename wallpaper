@@ -131,6 +131,16 @@ urldecode() {
 	fi
 }
 
+remove_enclosing_quotes()
+{
+	if [[ "$1" =~ ^\"(.*)\"$ ]] ||
+	   [[ "$1" =~ ^\'(.*)\'$ ]]; then
+		echo "${BASH_REMATCH[1]}"
+	else
+		echo "$1"
+	fi
+}
+
 extract_arg() {
 	case $1 in
 		(*:*) echo ${1#*:} ;;
@@ -140,8 +150,8 @@ extract_arg() {
 
 corner_to_gravity()
 {
-	local gravity
-	case $1 in
+	local gravity geometry
+	case ${1%%+*} in
 		top)		gravity="-gravity North";;
 		bottom)		gravity="-gravity South";;
 		left)		gravity="-gravity West";;
@@ -153,10 +163,13 @@ corner_to_gravity()
 		center)		gravity="-gravity Center";;
 	esac
 
+	geometry=$( grep -o "[+-][0-9]*[+-][0-9]*" <<< "$1")
+	[[ ! -z "$geometry" ]] && geometry=" -geometry $geometry"
+
 	if [[ -z "$gravity" ]]; then
 		return 1
 	else
-		echo "$gravity"
+		echo "$gravity$geometry"
 		return 0
 	fi
 }
@@ -458,6 +471,29 @@ fit()
 		     -size $resolution "xc:rgb($color)" +swap -gravity center -composite "png:$2"
 }
 
+compose()
+{
+	local layer trm corner recipe_string file recipe=()
+
+	if [[ ! $3 =~ ([^:]*):([^:]*):(.*) ]]; then
+		report_error 101 "compose: invalid argument."
+	fi
+
+	[[ ${BASH_REMATCH[1]} == "below" ]] && { layer="+swap"; trm="-trim"; }
+	corner=$(corner_to_gravity "${BASH_REMATCH[2]}")
+	recipe_string=${BASH_REMATCH[3]}
+	recipe_string=$(remove_enclosing_quotes "$recipe_string")
+
+	while IFS= read -r ; do
+		recipe+=( "$REPLY" )
+	done < <(xargs printf '%s\n' <<<$recipe_string)
+	dry_run=yes TAG_QUERY_RESULT=$TAG_QUERY_RESULT.compose set_command "${recipe[@]}"
+	file=$(cache1_to_cache2 "$produced_file")
+
+	debug_log convert "$1" $trm "$file" $corner $layer -composite "png:$2"
+	convert "$1" $trm "$file" $corner $layer -composite "png:$2"
+}
+
 ensure_cache_exists()
 {
 	case $cache_type in
@@ -553,6 +589,28 @@ ensure_recipe_is_cached()
 	commit_to_cache2 "$1" "$file"
 }
 
+extract_compose_arg()
+{
+	local count=1 layer="above" corner="" file
+
+	while [[ $# -gt 0 ]]; do
+		shift
+		case $1 in
+			above)	;&
+			below)	layer=$1
+				(( count++ ))
+				continue
+		esac
+		corner_to_gravity "$1" > /dev/null &&
+			{ corner=$1
+			  (( count++ ))
+			  continue; }
+		break
+	done
+	echo ":$layer:$corner:\"$1\""
+	return $count
+}
+
 extract_crop_arg()
 {
 	case $1 in
@@ -589,6 +647,9 @@ get_recipe() {
 				;;
 			crop)
 				argument=$(extract_crop_arg $2) && shift
+				;;
+			compose)
+				argument=$(extract_compose_arg "$@") || shift $?
 				;;
 			*)
 				report_error 2 "Invalid operation $filter"
@@ -675,7 +736,8 @@ case "$1" in
 	tint)	;&
 	flop)	;&
 	crop)	;&
-	fit)
+	fit)	;&
+	compose)
 		set_command "$(get_current_wallpaper_filename)" "$@"
 		;;
 
