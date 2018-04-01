@@ -471,6 +471,12 @@ fit()
 		     -size $resolution "xc:rgb($color)" +swap -gravity center -composite "png:$2"
 }
 
+resize()
+{
+	debug_log convert "$1" -resize $3 "png:$2"
+	convert "$1" -resize $3 "png:$2"
+}
+
 compose()
 {
 	local layer trm corner recipe_string file recipe=()
@@ -651,6 +657,9 @@ get_recipe() {
 			compose)
 				argument=$(extract_compose_arg "$@") || shift $?
 				;;
+			resize)
+				argument=:$2; shift
+				;;
 			*)
 				report_error 2 "Invalid operation $filter"
 				;;
@@ -737,6 +746,7 @@ case "$1" in
 	flop)	;&
 	crop)	;&
 	fit)	;&
+	resize)	;&
 	compose)
 		set_command "$(get_current_wallpaper_filename)" "$@"
 		;;
