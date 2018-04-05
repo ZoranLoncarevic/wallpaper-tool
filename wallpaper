@@ -9,6 +9,7 @@ TAG_DATABASE=~/.wallpaper/tags
 TAG_QUERY_RESULT=~/.wallpaper/query-result
 
 declare -a the_recipe=()
+declare -a the_deps=()
 
 usage() {
 	cat >&2 << EOF_USAGE
@@ -106,6 +107,18 @@ is_unmet_dependency_of()
 	else
 		[[ "$1" -ot "$2" ]]
 	fi
+
+	[[ $? == 0 ]] && return 0
+
+	if IS_CACHE2 "$1" &&
+	   [[ -e "${1/images/deps}" ]]; then
+		while IFS= read -r ; do
+			is_unmet_dependency_of "$REPLY" "$1" ||
+				return 0
+		done < "${1/images/deps}"
+	fi
+
+	return 1
 }
 
 switch_in_progress_with_main()
@@ -199,6 +212,13 @@ commit_to_cache2()
 {
 	echo "$1" >  "$CACHE_DIR/refs/${2##*/}" ||
 		report_error 8 "Can't write to cache"
+
+	if [[ ! -e "$CACHE_DIR/deps/${2##*/}" ]] ||
+	   [[ $1 =~ .recipe$ ]]; then
+		for dep in "${the_deps[@]}"; do
+			echo $dep >> "$CACHE_DIR/deps/${2##*/}"
+		done
+	fi
 }
 
 split_cache1_into_components()
@@ -495,6 +515,7 @@ compose()
 	done < <(xargs printf '%s\n' <<<$recipe_string)
 	dry_run=yes TAG_QUERY_RESULT=$TAG_QUERY_RESULT.compose set_command "${recipe[@]}"
 	file=$(cache1_to_cache2 "$produced_file")
+	the_deps+=( "$file" )
 
 	debug_log convert "$1" $trm "$file" $corner $layer -composite "png:$2"
 	convert "$1" $trm "$file" $corner $layer -composite "png:$2"
@@ -510,8 +531,10 @@ ensure_cache_exists()
 			fi ;;
 
 		2)	if [[ ! -d "${CACHE_DIR}/images" ]] ||
+			   [[ ! -d "${CACHE_DIR}/deps" ]] ||
 			   [[ ! -d "${CACHE_DIR}/refs" ]]; then
 				mkdir -p "${CACHE_DIR}/images"
+				mkdir -p "${CACHE_DIR}/deps"
 				mkdir -p "${CACHE_DIR}/refs"
 			fi ;;
 	esac
@@ -569,6 +592,23 @@ ensure_image_is_cached()
 	report_error 4 "Missing $partial_result."
 }
 
+update_cache_with_recipe()
+{
+	local file=$(cache1_to_cache2 "$1")
+	local sourcefile=$(cache1_to_cache2 "$2")
+
+	make_link "$sourcefile" "$file"
+
+	split_cache1_into_components "$2"
+	echo "$C1_DIR/$C1_FILE" > "${file/images/deps}"
+	if IS_CACHE2 "$sourcefile" &&
+	   [[ -e "${sourcefile/images/deps}" ]]; then
+		cat "${sourcefile/images/deps}" >> "${file/images/deps}"
+	fi
+
+	commit_to_cache2 "$1" "$file"
+}
+
 ensure_recipe_is_cached()
 {
 	[[ ! $1 =~ \.recipe$ ]] && return 0
@@ -590,9 +630,7 @@ ensure_recipe_is_cached()
 			  dry_run=yes set_command "${recipe[@]:1}"
 			  echo "$produced_file" )" || exit
 
-	local file=$(cache1_to_cache2 "$1")
-	make_link "$(cache1_to_cache2 "$produced_file")" "$file"
-	commit_to_cache2 "$1" "$file"
+	update_cache_with_recipe "$1" "$produced_file"
 }
 
 extract_compose_arg()
@@ -708,6 +746,7 @@ get_proposed_file() {
 set_command()
 {
 	local wallpaper_file 
+	the_deps=()
 
 	wallpaper_file=$(get_proposed_file "$@") || exit $?
 	if [[ ! "$1" == pick: ]]; then
