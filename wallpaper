@@ -630,6 +630,7 @@ ensure_recipe_is_cached()
 			  dry_run=yes set_command "${recipe[@]:1}"
 			  echo "$produced_file" )" || exit
 
+	ensure_cache_exists "$1"
 	update_cache_with_recipe "$1" "$produced_file"
 }
 
