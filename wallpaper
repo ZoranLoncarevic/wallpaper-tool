@@ -268,6 +268,13 @@ prepare_preview()
 	echo "$TAG_QUERY_RESULT"
 }
 
+parse_string_like_bash()
+{
+	while IFS= read -r ; do
+		recipe+=( "$REPLY" )
+	done < <(xargs printf '%s\n' <<<$1)
+}
+
 transform_recipe()
 {
 	local recipe=$1 arg result=""
@@ -510,9 +517,7 @@ compose()
 	recipe_string=${BASH_REMATCH[3]}
 	recipe_string=$(remove_enclosing_quotes "$recipe_string")
 
-	while IFS= read -r ; do
-		recipe+=( "$REPLY" )
-	done < <(xargs printf '%s\n' <<<$recipe_string)
+	parse_string_like_bash "$recipe_string"
 	dry_run=yes TAG_QUERY_RESULT=$TAG_QUERY_RESULT.compose set_command "${recipe[@]}"
 	file=$(cache1_to_cache2 "$produced_file")
 	the_deps+=( "$file" )
@@ -621,10 +626,7 @@ ensure_recipe_is_cached()
 		return 11 # Invalid recipe
 
 	recipe_string=$(head "$1" -n 1)
-
-	while IFS= read -r ; do
-		recipe+=( "$REPLY" )
-	done < <(xargs printf '%s\n' <<<$recipe_string)
+	parse_string_like_bash "$recipe_string"
 
 	produced_file="$( cd "$(dirname $1)" || exit
 			  dry_run=yes set_command "${recipe[@]:1}"
