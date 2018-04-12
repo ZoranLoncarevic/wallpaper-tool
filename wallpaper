@@ -65,6 +65,11 @@ IS_CACHE2()
 	[[ "$1" =~ ^${CACHE_DIR/#\~/$HOME}/images/* ]]
 }
 
+HAS_SHUFFLE()
+{
+	[[ $1 =~ (__shuffle$|__.*\+shuffle$) ]]
+}
+
 get_current_wallpaper_filename()
 {
 	echo "$(gconftool --get /desktop/gnome/background/picture_filename)"
@@ -113,8 +118,10 @@ is_unmet_dependency_of()
 	if IS_CACHE2 "$1" &&
 	   [[ -e "${1/images/deps}" ]]; then
 		while IFS= read -r ; do
-			is_unmet_dependency_of "$REPLY" "$1" ||
+			if ! is_unmet_dependency_of "$REPLY" "$1" ||
+			     HAS_SHUFFLE "$(cache2_to_cache1 "$REPLY")"; then
 				return 0
+			fi
 		done < "${1/images/deps}"
 	fi
 
@@ -504,6 +511,11 @@ resize()
 	convert "$1" -resize $3 "png:$2"
 }
 
+shuffle()
+{
+	ln -s "$1" "$2"
+}
+
 compose()
 {
 	local layer trm corner recipe_string file recipe=()
@@ -543,6 +555,17 @@ ensure_cache_exists()
 				mkdir -p "${CACHE_DIR}/refs"
 			fi ;;
 	esac
+}
+
+generate_image_from_cache1()
+{
+	local recipe=() recipestr
+
+	split_cache1_into_components "$1"
+	recipestr="set \"$C1_DIR/$C1_FILE\" $(transform_recipe "$C1_RECIPE")"
+
+	parse_string_like_bash "$recipestr"
+	( dry_run=yes set_command "${recipe[@]:1}" )
 }
 
 recipe_to_cachename() {
@@ -594,7 +617,13 @@ ensure_image_is_cached()
 			return 0
 		fi
 	done
-	report_error 4 "Missing $partial_result."
+
+	if IS_CACHE1 "$1"; then
+		generate_image_from_cache1 "$1"
+		generate_image_from 0 "$1"
+	else
+		report_error 4 "Missing $partial_result."
+	fi
 }
 
 update_cache_with_recipe()
@@ -701,6 +730,11 @@ get_recipe() {
 			resize)
 				argument=:$2; shift
 				;;
+			shuffle)
+				shuffle_status=yes
+				shift
+				continue
+				;;
 			*)
 				report_error 2 "Invalid operation $filter"
 				;;
@@ -708,6 +742,41 @@ get_recipe() {
 		the_recipe+=("$filter$argument")
 		shift
 	done
+}
+
+load_shuffle_status()
+{
+	if IS_CACHE1 "$1" &&
+	   HAS_SHUFFLE "$1"; then
+		shuffle_status=yes
+		return 0
+	else
+		shuffle_status=no
+		return 1
+	fi
+}
+
+shuffle_wallpaper()
+{
+	local wallpaper="$1"
+
+	if IS_CACHE1 "$1"; then
+		wallpaper=${1%%+shuffle}
+		wallpaper=${wallpaper%%shuffle}
+	fi
+
+	# When recipe in $1 consists of the sole shuffle filter,
+	# we leave dangling __ to make it appear as cache1 name
+	# to split_cache1_into_components below, as remaining
+	# wall-cache still needs to be removed from dir name.
+
+	split_cache1_into_components "$wallpaper"
+	wallpaper=$( recompose_cache1 "$C1_DIR" \
+			              "$(images_from_directory "$C1_DIR" | shuf -n 1)" \
+				      "$C1_RECIPE" )
+
+	ensure_recipe_is_cached "$wallpaper"
+	echo "$wallpaper"
 }
 
 get_proposed_file() {
@@ -753,7 +822,12 @@ set_command()
 
 	wallpaper_file=$(get_proposed_file "$@") || exit $?
 	if [[ ! "$1" == pick: ]]; then
+		load_shuffle_status "$wallpaper_file"
 		shift ; get_recipe "$@"
+		if [[ $shuffle_status == yes ]]; then
+			the_recipe+=("shuffle")
+			wallpaper_file=$(shuffle_wallpaper "$wallpaper_file")
+		fi
 	fi
 	if (( ${#the_recipe[@]} > 0 )); then
 		ensure_image_is_cached "$wallpaper_file"
@@ -789,6 +863,7 @@ case "$1" in
 	crop)	;&
 	fit)	;&
 	resize)	;&
+	shuffle) ;&
 	compose)
 		set_command "$(get_current_wallpaper_filename)" "$@"
 		;;
