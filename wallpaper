@@ -448,8 +448,8 @@ skip_command()
 
 	wallpaper=$(images_from_directory "$dir" | (
 			case $1 in
-			   (next) sed -n "/$file/{n;p}" ;;
-			   (prev) sed -n "/$file/{x;p;d;}; x" ;;
+			   (next) sed -n "/^$file\$/{n;p;q}" ;;
+			   (prev) sed -n "/^$file\$/{x;p;d;q}; x" ;;
 			esac ) )
 
 	if [[ "$wallpaper" == "" ]]; then
