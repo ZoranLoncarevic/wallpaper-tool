@@ -230,15 +230,19 @@ commit_to_cache2()
 
 split_cache1_into_components()
 { #
-	C1_FILE=${1%__*}
-	C1_RECIPE=${1##*__}
+	if IS_CACHE1 "$1"; then
+		C1_FILE=${1%__*}
+		C1_RECIPE=${1##*__}
+	else
+		C1_FILE=$1
+		C1_RECIPE=""
+	fi
+
 	C1_DIR="${C1_FILE%/*}"
 	C1_FILE="${C1_FILE##*/}"
 
 	if IS_CACHE1 "$1"; then
 		C1_DIR="${C1_DIR%/\.wall-cache}"
-	else
-		C1_RECIPE=""
 	fi
 }
 
