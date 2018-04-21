@@ -313,10 +313,10 @@ get_current_wallpaper_recipe()
 
 	if IS_CACHE1 "$wallpaper"; then
 		split_cache1_into_components "$wallpaper"
-		printf 'set "%s" %s\n' "$C1_DIR/$C1_FILE" \
+		printf "set '%s' %s\n" "$C1_DIR/$C1_FILE" \
 		                       "$(transform_recipe "$C1_RECIPE")"
 	else
-		printf 'set "%s"\n' "$wallpaper"
+		printf "set '%s'\n" "$wallpaper"
 	fi
 }
 
@@ -530,12 +530,7 @@ compose()
 
 	[[ ${BASH_REMATCH[1]} == "below" ]] && { layer="+swap"; trm="-trim"; }
 	corner=$(corner_to_gravity "${BASH_REMATCH[2]}")
-	recipe_string=${BASH_REMATCH[3]}
-	recipe_string=$(remove_enclosing_quotes "$recipe_string")
-
-	parse_string_like_bash "$recipe_string"
-	dry_run=yes TAG_QUERY_RESULT=$TAG_QUERY_RESULT.compose set_command "${recipe[@]}"
-	file=$(cache1_to_cache2 "$produced_file")
+	file=$(cache1_to_cache2 "${aux_recipe[$4]}")
 	the_deps+=( "$file" )
 
 	debug_log convert "$1" $trm "$file" $corner $layer -composite "png:$2"
@@ -596,7 +591,7 @@ recipe_to_cachename() {
 apply_filter()
 {
 	local to=$(cache1_to_cache2 "$3")
-	${the_recipe[$1]%%:*} "$2" "$to" "$(extract_arg "${the_recipe[$1]}")" || exit $?
+	${the_recipe[$1]%%:*} "$2" "$to" "$(extract_arg "${the_recipe[$1]}")" $1 || exit $?
 	commit_to_cache2 "$3" "$to"
 	echo "$to"
 }
@@ -687,8 +682,32 @@ extract_compose_arg()
 			  continue; }
 		break
 	done
-	echo ":$layer:$corner:\"$1\""
+	echo ":$layer:$corner:$1"
 	return $count
+}
+
+replace_primary()
+{
+	local recipe=()
+	local recipestr argstr
+
+	[[ "$1" =~ ^(:.*:.*:)(.*)$ ]] ||
+		report_error 114 "Bad compose arg"
+
+	recipestr=${BASH_REMATCH[2]}
+	argsstr=${BASH_REMATCH[1]}
+	
+	recipestr=$(remove_enclosing_quotes "$recipestr")
+	parse_string_like_bash "$recipestr"
+	produced_file="$( dry_run=yes set_command "${recipe[@]}"
+	                  echo "$produced_file" )" || exit
+	
+	aux_recipe[${#the_recipe[@]}]=$produced_file
+	split_cache1_into_components "$produced_file"
+	recipe[0]=\'"$C1_DIR/$C1_FILE"\'
+
+	# We are assigning to a variable from parent function
+	argument=$argsstr\"${recipe[@]}\"
 }
 
 extract_crop_arg()
@@ -714,6 +733,7 @@ extract_num() {
 
 get_recipe() {
 	the_recipe=()
+	aux_recipe=()
 	while [[ $# -gt 0 ]]; do
 		filter=$1
 		case $filter in
@@ -730,6 +750,7 @@ get_recipe() {
 				;;
 			compose)
 				argument=$(extract_compose_arg "$@") || shift $?
+				replace_primary "$argument"
 				;;
 			resize)
 				argument=:$2; shift
