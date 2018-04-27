@@ -386,6 +386,19 @@ tag_command()
 	done
 }
 
+query_is_up_to_date()
+{
+
+	[[ -e "$TAG_QUERY_RESULT/$1" ]] ||
+		return 1
+
+	for tag in ${count[@]}; do
+		[[ "$TAG_QUERY_RESULT/$1" -ot "$TAG_DATABASE/$tag" ]] &&
+			return 2
+	done
+	return 0
+}
+
 query_by_tag()
 {
 	local tag count=( ${1//+/ } )
@@ -395,17 +408,20 @@ query_by_tag()
 		return
 	fi
 
-	mkdir -p "$TAG_QUERY_RESULT.in.progress"
+	if ! query_is_up_to_date "$1"; then
+#
+		rm -rf "$TAG_QUERY_RESULT/$1"
+		mkdir -p "$TAG_QUERY_RESULT/$1"
+#
+		(	for tag in ${1//+/ }; do
+				ls "$TAG_DATABASE/$tag" 2>/dev/null
+			done
+#
+		) | sort | uniq -c | sort -nr | grep "^ *${#count[@]}" | cut -c 9- |
+		  xargs -d '\n' -I {} ln "$TAG_DATABASE/$count/{}" "$TAG_QUERY_RESULT/$1"
+	fi
 
-	(	for tag in ${1//+/ }; do
-			ls "$TAG_DATABASE/$tag" 2>/dev/null
-		done
-
-	) | sort | uniq -c | sort -nr | grep "^ *${#count[@]}" | cut -c 9- |
-	    xargs -d '\n' -I {} ln "$TAG_DATABASE/$count/{}" "$TAG_QUERY_RESULT.in.progress"
-
-	switch_in_progress_with_main "$TAG_QUERY_RESULT"
-	echo "$TAG_QUERY_RESULT"
+	echo "$TAG_QUERY_RESULT/$1"
 }
 
 find_next_available_name()
