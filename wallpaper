@@ -729,6 +729,8 @@ replace_primary()
 extract_crop_arg()
 {
 	case $1 in
+		top_left|top_right)		;&
+		bottom_left|bottom_right)	;&
 		top|bottom|left|right|center) 	echo ":$1"
 						return 0;;
 
