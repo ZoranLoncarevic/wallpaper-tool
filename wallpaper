@@ -478,6 +478,16 @@ skip_command()
 	set_command "$dir/$wallpaper"
 }
 
+delete_current_wallpaper()
+{
+	local current=$( get_current_wallpaper_cache1 )
+	split_cache1_into_components "$current"
+	local wallpaper_file="$C1_DIR/$C1_FILE"
+
+	skip_command next
+	rm -f "$wallpaper_file"
+}
+
 blur()
 {
 	debug_log convert "$1" -resize 50% -blur 0x${3:-5} -resize 200% "png:$2"
@@ -937,6 +947,9 @@ case "$1" in
 		;;
 	prev)
 		skip_command prev
+		;;
+	delete)
+		delete_current_wallpaper
 		;;
 	*)
 		echo "Invalid command." >&2
