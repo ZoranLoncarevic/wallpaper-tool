@@ -3,7 +3,6 @@
 
 arg0=${0##*/}
 cache_type=2
-DEFAULT_WALLPAPER="${DEFAULT_WALLPAPER:-/usr/share/backgrounds/Green_by_Alan_Mattila.jpg}"
 CACHE_DIR=~/.wallpaper/cache
 TAG_DATABASE=~/.wallpaper/tags
 TAG_QUERY_RESULT=~/.wallpaper/query-result
@@ -77,8 +76,30 @@ get_current_wallpaper_filename()
 
 set_current_wallpaper()
 {
+	save_default_wallpaper
+
 	[[ ! $dry_run == yes ]] &&
 	gconftool -t str --set /desktop/gnome/background/picture_filename "$1"
+}
+
+save_default_wallpaper()
+{
+	[[ -f ~/.wallpaper/default-wallpaper ]] && return 0
+
+	mkdir -p ~/.wallpaper
+	echo "$(get_current_wallpaper_filename)" > ~/.wallpaper/default-wallpaper
+}
+
+get_default_wallpaper()
+{
+	if [[ -z "$DEFAULT_WALLPAPER" ]]; then
+		if [[ -f ~/.wallpaper/default-wallpaper ]]; then
+			DEFAULT_WALLPAPER=$(<~/.wallpaper/default-wallpaper)
+		else
+			DEFAULT_WALLPAPER=$(get_current_wallpaper_filename)
+		fi
+	fi
+	echo "$DEFAULT_WALLPAPER"
 }
 
 get_screen_resolution()
@@ -839,7 +860,7 @@ get_proposed_file() {
 		proposed_file=$(xclip -o)
 	fi
 	if [[ "$proposed_file" == "default" ]]; then
-		proposed_file="$DEFAULT_WALLPAPER"
+		proposed_file=$(get_default_wallpaper)
 	fi
 	if [[ "$proposed_file" =~ ^@ ]]; then
 		proposed_file=$(query_by_tag ${proposed_file#@}) || exit
