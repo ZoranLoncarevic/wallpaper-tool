@@ -38,6 +38,11 @@ debug_log() {
 	echo "$@" >&2
 }
 
+topipe()
+{
+	eval "$1" "$(</dev/stdin)"
+}
+
 images_from_directory()
 {
 	local pattern=${2:-'*.png *.jpg *.recipe'}
@@ -69,17 +74,43 @@ HAS_SHUFFLE()
 	[[ $1 =~ (__shuffle$|__.*\+shuffle$) ]]
 }
 
+get_lsb_release()
+{
+	if [[ -z "$LSB_RELEASE" ]]; then
+		LSB_RELEASE=$(fgrep DISTRIB_DESCRIPTION /etc/lsb-release)
+		LSB_RELEASE=${LSB_RELEASE#*=}
+		LSB_RELEASE=${LSB_RELEASE#\"}
+		LSB_RELEASE=${LSB_RELEASE%\"}
+	fi
+	echo "$LSB_RELEASE"
+}
+
 get_current_wallpaper_filename()
 {
-	echo "$(gconftool --get /desktop/gnome/background/picture_filename)"
+	case "$(get_lsb_release)" in
+		"Ubuntu 11.04")
+			gconftool --get /desktop/gnome/background/picture_filename ;;
+		"Ubuntu 14.10")
+			gsettings get org.gnome.desktop.background picture-uri |
+			topipe remove_enclosing_quotes |
+			topipe urldecode ;;
+		*)	report_error 240 "Unsupported distribution"
+	esac
 }
 
 set_current_wallpaper()
 {
 	save_default_wallpaper
+	[[ $dry_run == yes ]] && return 0
 
-	[[ ! $dry_run == yes ]] &&
-	gconftool -t str --set /desktop/gnome/background/picture_filename "$1"
+	case "$(get_lsb_release)" in
+		"Ubuntu 11.04")
+			gconftool -t str --set /desktop/gnome/background/picture_filename "$1" ;;
+		"Ubuntu 14.10")
+			gsettings set org.gnome.desktop.background picture-uri \
+				  "$(urlencode "$1")" ;;
+		*)      report_error 240 "Unsupported distribution"
+	esac
 }
 
 save_default_wallpaper()
@@ -170,6 +201,12 @@ urldecode() {
 	else
 		echo $1
 	fi
+}
+
+urlencode()
+{
+	echo file://$(python -c "import urllib;print urllib.quote(raw_input())" \
+		        <<< "$1")
 }
 
 remove_enclosing_quotes()
