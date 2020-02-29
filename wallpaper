@@ -45,7 +45,7 @@ topipe()
 
 images_from_directory()
 {
-	local pattern=${2:-'*.png *.jpg *.recipe'}
+	local pattern=${2:-'*.PNG *.JPG *.png *.jpg *.recipe'}
 	( cd "$1" && eval "ls $LS_FLAGS $pattern" ) 2>/dev/null
 }
 
