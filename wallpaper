@@ -90,7 +90,8 @@ get_current_wallpaper_filename()
 	case "$(get_lsb_release)" in
 		"Ubuntu 11.04")
 			gconftool --get /desktop/gnome/background/picture_filename ;;
-		"Ubuntu 14.10")
+		"Ubuntu 14.10") ;&
+		"Ubuntu 23.04")
 			gsettings get org.gnome.desktop.background picture-uri |
 			topipe remove_enclosing_quotes |
 			topipe urldecode ;;
@@ -106,7 +107,8 @@ set_current_wallpaper()
 	case "$(get_lsb_release)" in
 		"Ubuntu 11.04")
 			gconftool -t str --set /desktop/gnome/background/picture_filename "$1" ;;
-		"Ubuntu 14.10")
+		"Ubuntu 14.10") ;&
+		"Ubuntu 23.04")
 			gsettings set org.gnome.desktop.background picture-uri \
 				  "$(urlencode "$1")" ;;
 		*)      report_error 240 "Unsupported distribution"
@@ -205,7 +207,7 @@ urldecode() {
 
 urlencode()
 {
-	echo file://$(python -c "import urllib;print urllib.quote(raw_input())" \
+	echo file://$(python3 -c "import urllib.parse;print(urllib.parse.quote(input()))" \
 		        <<< "$1")
 }
 
@@ -562,9 +564,9 @@ dim()
 tint()
 {
 	IFS=':' read -r -a params <<< "$3"
-	debug_log convert "$1" -fill "'rgb(${params[0]},${params[1]},${params[2]})'" \
+	debug_log convert "$1" -fill "'rgb(${params[0]:-0},${params[1]:-0},${params[2]:-0})'" \
 		-colorize ${params[3]:-40}% "png:$2"
-	convert "$1" -fill "rgb(${params[0]},${params[1]},${params[2]})" \
+	convert "$1" -fill "rgb(${params[0]:-0},${params[1]:-0},${params[2]:-0})" \
 		-colorize ${params[3]:-40}% "png:$2"
 }
 
